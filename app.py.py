@@ -101,7 +101,6 @@ ax.set_ylabel("Importer")
 format_axis(ax)
 st.pyplot(fig)
 
-
     # ===============================
     # Closing Notes
     # ===============================
@@ -117,4 +116,5 @@ st.pyplot(fig)
         policy formulation, and trade facilitation strategies.
         """
     )
+
 
