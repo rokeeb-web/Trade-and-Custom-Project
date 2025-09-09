@@ -4,109 +4,104 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as ticker
 
-# ===============================
+st.set_page_config(page_title="Trade and Customs Dashboard", layout="wide")
+
+# ----------------------------
 # Load Data
-# ===============================
+# ----------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_excel("Cleaned_Trade_and_Custom.xlsx")
-    return df
+    return pd.read_excel("Cleaned_Trade_and_Custom.xlsx")
 
 df = load_data()
 
-# ===============================
-# Streamlit App Layout
-# ===============================
-st.title("Trade and Customs Data Dashboard")
+# ----------------------------
+# Sidebar Filters
+# ----------------------------
+st.sidebar.header("Filters")
 
-st.markdown("""
-This dashboard presents exploratory data analysis (EDA) on trade and customs data.
-The focus is on imports, tax revenue, and country contributions.
-""")
+# Metric selection
+metric = st.sidebar.selectbox(
+    "Select Metric",
+    ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
+)
 
-# ===============================
-# Key Metrics
-# ===============================
-total_imports = df["CIF Value (N)"].sum()
-total_fob = df["FOB Value (N)"].sum()
-total_tax = df["Total Tax(N)"].sum()
-unique_importers = df["Importer"].nunique()
+# HS Code filter
+hs_codes = st.sidebar.multiselect(
+    "Select HS Codes",
+    options=df["HS Code"].unique(),
+    default=None
+)
 
-st.subheader("Key Metrics")
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total CIF Imports (₦)", f"{total_imports:,.0f}")
-col2.metric("Total FOB Value (₦)", f"{total_fob:,.0f}")
-col3.metric("Total Tax Revenue (₦)", f"{total_tax:,.0f}")
-col4.metric("Unique Importers", unique_importers)
+# Country filter
+countries = st.sidebar.multiselect(
+    "Select Country of Origin",
+    options=df["Country of Origin"].unique(),
+    default=None
+)
 
-# ===============================
-# Visualization Functions
-# ===============================
-def format_axis(ax):
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
-    plt.tight_layout()
+# Top N selector
+top_n = st.sidebar.slider("Select Top N", 5, 20, 10)
 
-# 1. Imports by HS Code
-st.subheader("Top 10 Imports by HS Code")
-imports_by_hs = df.groupby("HS Code")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
+# ----------------------------
+# Apply Filters
+# ----------------------------
+filtered_df = df.copy()
+
+if hs_codes:
+    filtered_df = filtered_df[filtered_df["HS Code"].isin(hs_codes)]
+
+if countries:
+    filtered_df = filtered_df[filtered_df["Country of Origin"].isin(countries)]
+
+# ----------------------------
+# Aggregation
+# ----------------------------
+agg_data = filtered_df.groupby("HS Code")[[metric]].sum().reset_index()
+top_imports = agg_data.sort_values(by=metric, ascending=False).head(top_n)
+
+# ----------------------------
+# Chart
+# ----------------------------
+st.subheader(f"Top {top_n} HS Codes by {metric}")
 
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(y="HS Code", x="CIF Value (N)", data=imports_by_hs, ax=ax, orient="h", palette="Blues_r")
-ax.set_xlabel("CIF Value (₦)")
+sns.barplot(y="HS Code", x=metric, data=top_imports, palette="Blues_r", ax=ax)
+
+# Format axis in billions or millions
+def format_billions(x, pos):
+    if x >= 1e9:
+        return f'{x*1e-9:.1f}B'
+    elif x >= 1e6:
+        return f'{x*1e-6:.1f}M'
+    else:
+        return f'{x:,.0f}'
+
+ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_billions))
+ax.set_xlabel(metric)
 ax.set_ylabel("HS Code")
-format_axis(ax)
+
 st.pyplot(fig)
 
-# 2. Top Countries of Supply
-st.subheader("Top 10 Countries of Supply")
-supply_countries = df.groupby("Country of Supply")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
+# ----------------------------
+# Key Insights
+# ----------------------------
+st.subheader("Key Insights")
 
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(y="Country of Supply", x="CIF Value (N)", data=supply_countries, ax=ax, orient="h", palette="Greens_r")
-ax.set_xlabel("CIF Value (₦)")
-ax.set_ylabel("Country of Supply")
-format_axis(ax)
-st.pyplot(fig)
+total_value = filtered_df[metric].sum()
+top_hs_code = top_imports.iloc[0]["HS Code"] if not top_imports.empty else "N/A"
+top_hs_value = top_imports.iloc[0][metric] if not top_imports.empty else 0
 
-# 3. Top Countries of Origin
-st.subheader("Top 10 Countries of Origin")
-origin_countries = df.groupby("Country of Origin")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
+col1, col2, col3 = st.columns(3)
 
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(y="Country of Origin", x="CIF Value (N)", data=origin_countries, ax=ax, orient="h", palette="Oranges_r")
-ax.set_xlabel("CIF Value (₦)")
-ax.set_ylabel("Country of Origin")
-format_axis(ax)
-st.pyplot(fig)
+with col1:
+    st.metric("Total " + metric, format_billions(total_value, None))
 
-# 4. Tax Revenue Contributions by HS Code
-st.subheader("Top 10 Tax Revenue Contributions by HS Code")
-tax_by_hs = df.groupby("HS Code")["Total Tax(N)"].sum().sort_values(ascending=False).head(10).reset_index()
+with col2:
+    st.metric("Top HS Code", top_hs_code)
 
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(y="HS Code", x="Total Tax(N)", data=tax_by_hs, ax=ax, orient="h", palette="Purples_r")
-ax.set_xlabel("Tax Revenue (₦)")
-ax.set_ylabel("HS Code")
-format_axis(ax)
-st.pyplot(fig)
+with col3:
+    st.metric("Top HS Code Value", format_billions(top_hs_value, None))
 
-# 5. Top Importers by CIF Value
-st.subheader("Top 10 Importers by CIF Value")
-top_importers = df.groupby("Importer")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
-
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(y="Importer", x="CIF Value (N)", data=top_importers, ax=ax, orient="h", palette="Reds_r")
-ax.set_xlabel("CIF Value (₦)")
-ax.set_ylabel("Importer")
-format_axis(ax)
-st.pyplot(fig)
-
-# ===============================
-# Notes
-# ===============================
-st.markdown("""
-**Notes:**
-- All figures are in Nigerian Naira (₦).
-- Only top 10 categories are displayed in charts for clarity.
-- Charts use horizontal orientation for readability.
-""")
+st.markdown("---")
+st.write(" Use the filters on the left to explore trade data by HS Code, Country, and Value Metric.")
