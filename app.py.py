@@ -2,115 +2,105 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# Configure Streamlit page
-st.set_page_config(
-    page_title="Trade & Customs Exploratory Data Analysis",
-    layout="wide"
-)
+import matplotlib.ticker as ticker
 
 # ===============================
-# Load Data Function
+# Load Data
 # ===============================
 @st.cache_data
-def load_data(file_path="cleaned_trade_custom.xlsx"):
-    try:
-        df = pd.read_excel(file_path)
-    except FileNotFoundError:
-        st.error(f"Could not find {file_path}. Please upload the dataset below.")
-        df = pd.DataFrame()
+def load_data():
+    df = pd.read_excel("Cleaned_Trade_and_Custom.xlsx")
     return df
 
-# Sidebar uploader (for presentation flexibility)
-uploaded_file = st.sidebar.file_uploader("Upload your Excel dataset", type=["xlsx"])
-
-if uploaded_file is not None:
-    df = pd.read_excel(uploaded_file)
-    st.success("Custom dataset uploaded successfully.")
-else:
-    df = load_data()
+df = load_data()
 
 # ===============================
-# App Title
+# Streamlit App Layout
 # ===============================
-st.title("Trade & Customs Exploratory Data Analysis")
+st.title("Trade and Customs Data Dashboard")
 
-# Preview data
-if not df.empty:
-    st.subheader("Dataset Preview")
-    st.dataframe(df.head())
-    st.write("Available columns:", df.columns.tolist())
-else:
-    st.warning("No data available. Please upload a valid Excel file to continue.")
+st.markdown("""
+This dashboard presents exploratory data analysis (EDA) on trade and customs data.
+The focus is on imports, tax revenue, and country contributions.
+""")
 
-# Proceed only if dataframe is available
-if not df.empty:
+# ===============================
+# Key Metrics
+# ===============================
+total_imports = df["CIF Value (N)"].sum()
+total_fob = df["FOB Value (N)"].sum()
+total_tax = df["Total Tax(N)"].sum()
+unique_importers = df["Importer"].nunique()
 
-    # ===============================
-    # High-Level Metrics
-    # ===============================
-    st.header("Key Metrics")
+st.subheader("Key Metrics")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total CIF Imports (₦)", f"{total_imports:,.0f}")
+col2.metric("Total FOB Value (₦)", f"{total_fob:,.0f}")
+col3.metric("Total Tax Revenue (₦)", f"{total_tax:,.0f}")
+col4.metric("Unique Importers", unique_importers)
 
-    total_imports = df["CIF Value (N)"].sum()
-    total_tax = df["Total Tax(N)"].sum()
-    unique_hs_codes = df["HS Code"].nunique()
-    unique_countries_origin = df["Country of Origin"].nunique()
+# ===============================
+# Visualization Functions
+# ===============================
+def format_axis(ax):
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+    plt.tight_layout()
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Imports (CIF Value)", f"₦{total_imports:,.0f}")
-    col2.metric("Total Tax Revenue", f"₦{total_tax:,.0f}")
-    col3.metric("Unique HS Codes", unique_hs_codes)
-    col4.metric("Countries of Origin", unique_countries_origin)
+# 1. Imports by HS Code
+st.subheader("Top 10 Imports by HS Code")
+imports_by_hs = df.groupby("HS Code")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
 
-    # ===============================
-    # Charts
-    # ===============================
-    st.header("Exploratory Visualizations")
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(y="HS Code", x="CIF Value (N)", data=imports_by_hs, ax=ax, orient="h", palette="Blues_r")
+ax.set_xlabel("CIF Value (₦)")
+ax.set_ylabel("HS Code")
+format_axis(ax)
+st.pyplot(fig)
 
-    # 1. Top HS Codes by Import Value
-    st.subheader("Top HS Codes by Import Value (CIF)")
-    top_hs = df.groupby("HS Code")["CIF Value (N)"].sum().sort_values(ascending=False).head(10)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=top_hs.values, y=top_hs.index, ax=ax)
-    ax.set_xlabel("CIF Value (₦)")
-    ax.set_ylabel("HS Code")
-    st.pyplot(fig)
+# 2. Top Countries of Supply
+st.subheader("Top 10 Countries of Supply")
+supply_countries = df.groupby("Country of Supply")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
 
-    # 2. Top Countries of Origin
-    st.subheader("Top Countries of Origin by Import Value")
-    top_origin = df.groupby("Country of Origin")["CIF Value (N)"].sum().sort_values(ascending=False).head(10)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=top_origin.values, y=top_origin.index, ax=ax, palette="Blues_r")
-    ax.set_xlabel("CIF Value (₦)")
-    ax.set_ylabel("Country of Origin")
-    st.pyplot(fig)
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(y="Country of Supply", x="CIF Value (N)", data=supply_countries, ax=ax, orient="h", palette="Greens_r")
+ax.set_xlabel("CIF Value (₦)")
+ax.set_ylabel("Country of Supply")
+format_axis(ax)
+st.pyplot(fig)
 
-    # 3. Top Countries of Supply
-    st.subheader("Top Countries of Supply by Import Value")
-    top_supply = df.groupby("Country of Supply")["CIF Value (N)"].sum().sort_values(ascending=False).head(10)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=top_supply.values, y=top_supply.index, ax=ax, palette="Greens_r")
-    ax.set_xlabel("CIF Value (₦)")
-    ax.set_ylabel("Country of Supply")
-    st.pyplot(fig)
+# 3. Top Countries of Origin
+st.subheader("Top 10 Countries of Origin")
+origin_countries = df.groupby("Country of Origin")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
 
-    # 4. Tax Revenue by HS Code
-    st.subheader("Top HS Codes by Tax Revenue")
-    top_tax = df.groupby("HS Code")["Total Tax(N)"].sum().sort_values(ascending=False).head(10)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=top_tax.values, y=top_tax.index, ax=ax, palette="Reds_r")
-    ax.set_xlabel("Tax Revenue (₦)")
-    ax.set_ylabel("HS Code")
-    st.pyplot(fig)
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(y="Country of Origin", x="CIF Value (N)", data=origin_countries, ax=ax, orient="h", palette="Oranges_r")
+ax.set_xlabel("CIF Value (₦)")
+ax.set_ylabel("Country of Origin")
+format_axis(ax)
+st.pyplot(fig)
 
-    # 5. Top Importers by Import Value
-    st.subheader("Top Importers by Import Value (CIF)")
-    top_importers = df.groupby("Importer")["CIF Value (N)"].sum().sort_values(ascending=False).head(10)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=top_importers.values, y=top_importers.index, ax=ax, palette="Purples_r")
-    ax.set_xlabel("CIF Value (₦)")
-    ax.set_ylabel("Importer")
-    st.pyplot(fig)
+# 4. Tax Revenue Contributions by HS Code
+st.subheader("Top 10 Tax Revenue Contributions by HS Code")
+tax_by_hs = df.groupby("HS Code")["Total Tax(N)"].sum().sort_values(ascending=False).head(10).reset_index()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(y="HS Code", x="Total Tax(N)", data=tax_by_hs, ax=ax, orient="h", palette="Purples_r")
+ax.set_xlabel("Tax Revenue (₦)")
+ax.set_ylabel("HS Code")
+format_axis(ax)
+st.pyplot(fig)
+
+# 5. Top Importers by CIF Value
+st.subheader("Top 10 Importers by CIF Value")
+top_importers = df.groupby("Importer")["CIF Value (N)"].sum().sort_values(ascending=False).head(10).reset_index()
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(y="Importer", x="CIF Value (N)", data=top_importers, ax=ax, orient="h", palette="Reds_r")
+ax.set_xlabel("CIF Value (₦)")
+ax.set_ylabel("Importer")
+format_axis(ax)
+st.pyplot(fig)
+
 
     # ===============================
     # Closing Notes
@@ -127,3 +117,4 @@ if not df.empty:
         policy formulation, and trade facilitation strategies.
         """
     )
+
