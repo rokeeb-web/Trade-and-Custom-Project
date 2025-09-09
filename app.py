@@ -99,122 +99,88 @@ col3.metric("Total Tax Revenue (₦)", human_format(total_tax))
 col4.metric("Unique Importers", unique_importers)
 
 # ===============================
+# Helper: Scale numbers for plotting
+# ===============================
+def scale_values(df, column, unit="B"):
+    if unit == "B":
+        return df[column] / 1e9
+    elif unit == "M":
+        return df[column] / 1e6
+    else:
+        return df[column]
+
+# ===============================
 # Visualizations
 # ===============================
 
 # 1. Imports by HS Code
 st.subheader(f"Top {top_n} Imports by HS Code ({metric})")
 imports_by_hs = (
-    filtered_df.groupby("HS Code")[metric]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
+    filtered_df.groupby("HS Code")[metric].sum()
+    .sort_values(ascending=False).head(top_n).reset_index()
 )
+imports_by_hs["Scaled"] = scale_values(imports_by_hs, metric, "B")
 
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(
-    y="HS Code",
-    x=metric,
-    data=imports_by_hs,
-    ax=ax,
-    orient="h",
-    palette="Blues_r",
-    order=imports_by_hs["HS Code"]  # maintain order
-)
-format_axis(ax, f"{metric} (₦ Billions)")
+sns.barplot(y="HS Code", x="Scaled", data=imports_by_hs, ax=ax, orient="h", palette="Blues_r")
+ax.set_xlabel(f"{metric} (₦ Billion)")
+ax.set_ylabel("HS Code")
 st.pyplot(fig)
 
 # 2. Top Countries of Supply
 st.subheader(f"Top {top_n} Countries of Supply ({metric})")
 supply_countries = (
-    filtered_df.groupby("Country of Supply")[metric]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
+    filtered_df.groupby("Country of Supply")[metric].sum()
+    .sort_values(ascending=False).head(top_n).reset_index()
 )
+supply_countries["Scaled"] = scale_values(supply_countries, metric, "B")
 
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(
-    y="Country of Supply",
-    x=metric,
-    data=supply_countries,
-    ax=ax,
-    orient="h",
-    palette="Greens_r",
-    order=supply_countries["Country of Supply"]
-)
-format_axis(ax, f"{metric} (₦ Billions)")
+sns.barplot(y="Country of Supply", x="Scaled", data=supply_countries, ax=ax, orient="h", palette="Greens_r")
+ax.set_xlabel(f"{metric} (₦ Billion)")
+ax.set_ylabel("Country of Supply")
 st.pyplot(fig)
 
 # 3. Top Countries of Origin
 st.subheader(f"Top {top_n} Countries of Origin ({metric})")
 origin_countries = (
-    filtered_df.groupby("Country of Origin")[metric]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
+    filtered_df.groupby("Country of Origin")[metric].sum()
+    .sort_values(ascending=False).head(top_n).reset_index()
 )
+origin_countries["Scaled"] = scale_values(origin_countries, metric, "B")
 
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(
-    y="Country of Origin",
-    x=metric,
-    data=origin_countries,
-    ax=ax,
-    orient="h",
-    palette="Oranges_r",
-    order=origin_countries["Country of Origin"]
-)
-format_axis(ax, f"{metric} (₦ Billions)")
+sns.barplot(y="Country of Origin", x="Scaled", data=origin_countries, ax=ax, orient="h", palette="Oranges_r")
+ax.set_xlabel(f"{metric} (₦ Billion)")
+ax.set_ylabel("Country of Origin")
 st.pyplot(fig)
 
 # 4. Tax Revenue Contributions by HS Code
 st.subheader(f"Top {top_n} Tax Revenue Contributions by HS Code")
 tax_by_hs = (
-    filtered_df.groupby("HS Code")["Total Tax(N)"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
+    filtered_df.groupby("HS Code")["Total Tax(N)"].sum()
+    .sort_values(ascending=False).head(top_n).reset_index()
 )
+tax_by_hs["Scaled"] = scale_values(tax_by_hs, "Total Tax(N)", "B")
 
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(
-    y="HS Code",
-    x="Total Tax(N)",
-    data=tax_by_hs,
-    ax=ax,
-    orient="h",
-    palette="Purples_r",
-    order=tax_by_hs["HS Code"]
-)
-format_axis(ax, "Total Tax Revenue (₦ Billions)")
+sns.barplot(y="HS Code", x="Scaled", data=tax_by_hs, ax=ax, orient="h", palette="Purples_r")
+ax.set_xlabel("Tax Revenue (₦ Billion)")
+ax.set_ylabel("HS Code")
 st.pyplot(fig)
 
 # 5. Top Importers by CIF Value
 st.subheader(f"Top {top_n} Importers by CIF Value")
 top_importers = (
-    filtered_df.groupby("Importer")["CIF Value (N)"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
+    filtered_df.groupby("Importer")["CIF Value (N)"].sum()
+    .sort_values(ascending=False).head(top_n).reset_index()
 )
+top_importers["Scaled"] = scale_values(top_importers, "CIF Value (N)", "B")
 
 fig, ax = plt.subplots(figsize=(10, 6))
-sns.barplot(
-    y="Importer",
-    x="CIF Value (N)",
-    data=top_importers,
-    ax=ax,
-    orient="h",
-    palette="Reds_r",
-    order=top_importers["Importer"]
-)
-format_axis(ax, "CIF Value (₦ Billions)")
+sns.barplot(y="Importer", x="Scaled", data=top_importers, ax=ax, orient="h", palette="Reds_r")
+ax.set_xlabel("CIF Value (₦ Billion)")
+ax.set_ylabel("Importer")
 st.pyplot(fig)
 
 # ===============================
@@ -240,3 +206,4 @@ if not supply_countries.empty:
 
 st.markdown("---")
 st.markdown("Use filters on the left to refine the analysis and download the customized dataset.")
+
