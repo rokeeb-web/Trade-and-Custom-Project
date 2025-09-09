@@ -101,20 +101,21 @@ ax.set_ylabel("Importer")
 format_axis(ax)
 st.pyplot(fig)
 
-    # ===============================
-    # Closing Notes
-    # ===============================
-    st.markdown("---")
-    st.markdown(
-        """
-        ### Summary
-        - The analysis highlights top-performing HS Codes and countries driving import activity.  
-        - Tax revenue contributions are concentrated in certain product categories.  
-        - Importer distribution provides insight into market concentration and key trade actors.  
+# ===============================
+# Closing Notes
+# ===============================
+st.markdown("---")
+st.markdown(
+     """
+     ### Summary
+    - The analysis highlights top-performing HS Codes and countries driving import activity.  
+    - Tax revenue contributions are concentrated in certain product categories.  
+    - Importer distribution provides insight into market concentration and key trade actors.  
 
-        This dashboard is designed to support decision-making in customs monitoring, 
-        policy formulation, and trade facilitation strategies.
+     This dashboard is designed to support decision-making in customs monitoring, 
+     policy formulation, and trade facilitation strategies.
         """
     )
+
 
 
