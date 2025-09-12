@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 
 st.set_page_config(page_title="Trade and Customs Dashboard", layout="wide")
 
@@ -154,25 +155,31 @@ plot_bar(top_importers, "Scaled", "Importer", "CIF Value in Billions (₦)", "Im
 # Correlation Heatmap
 # ===============================
 st.subheader("Correlation between Trade Variables")
-numeric_cols = ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
+numeric_cols = ['CIF Value (N)', 'FOB Value (N)', 'Total Tax(N)']
 corr_matrix = filtered_df[numeric_cols].corr()
 
 fig, ax = plt.subplots(figsize=(8, 6))
 sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
-ax.set_title("Correlation Heatmap of Trade Variables")
+plt.title("Correlation between Trade Variables")
 st.pyplot(fig)
 
 # ===============================
-# Map Visualization
+# Choropleth Map
 # ===============================
-st.subheader("Trade Map Visualization")
+st.subheader(f"World Map of Trade by Country of Origin ({metric})")
+map_data = filtered_df.groupby("Country of Origin")[metric].sum().reset_index()
 
-# Example: show trade by country of origin if lat/long exist
-# Assumes you have "Latitude" and "Longitude" columns for each country
-if {"Latitude", "Longitude"}.issubset(filtered_df.columns):
-    st.map(filtered_df[["Latitude", "Longitude"]])
-else:
-    st.info("Map cannot be displayed because Latitude/Longitude columns are missing in the dataset.")
+fig_map = px.choropleth(
+    map_data,
+    locations="Country of Origin",
+    locationmode="country names",
+    color=metric,
+    hover_name="Country of Origin",
+    color_continuous_scale="Blues",
+    title=f"Trade by Country of Origin ({metric})",
+)
+fig_map.update_layout(geo=dict(showframe=False, showcoastlines=True))
+st.plotly_chart(fig_map, use_container_width=True)
 
 # ===============================
 # Data Download
