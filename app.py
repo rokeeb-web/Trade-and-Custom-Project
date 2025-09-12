@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
 
 st.set_page_config(page_title="Trade and Customs Dashboard", layout="wide")
 
@@ -165,41 +164,18 @@ sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
 ax.set_title("Correlation Heatmap of Trade Variables")
 st.pyplot(fig)
 
-# 7. Choropleth Map
-st.subheader(f"Trade Imports by Country of Origin ({metric})")
-
-trade_map = filtered_df.groupby("Country of Origin")[metric].sum().reset_index()
-trade_map[metric + "_Billions"] = trade_map[metric] / 1e9
-
-fig = px.choropleth(
-    trade_map,
-    locations="Country of Origin",
-    locationmode="country names",
-    color=metric + "_Billions",
-    hover_name="Country of Origin",
-    color_continuous_scale="YlGnBu",
-    title=f"Trade Imports by Country of Origin ({metric} in Billions ₦)",
-    projection="natural earth"
-)
-
-fig.update_layout(
-    geo=dict(showframe=False, showcoastlines=True),
-    coloraxis_colorbar=dict(title=f"{metric} (₦ Billions)")
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-# 8. Monthly Trade Volume
+# 7. Monthly Trade Volume
 if "Receipt Date" in filtered_df.columns:
     st.subheader("Monthly Trade Volume (FOB Value)")
     monthly_volume = filtered_df.groupby(filtered_df["Receipt Date"].dt.to_period("M"))["FOB Value (N)"].sum()
     monthly_volume.index = monthly_volume.index.to_timestamp()
 
     fig, ax = plt.subplots(figsize=(12,6))
-    monthly_volume.plot(ax=ax, marker="o")
+    monthly_volume.plot(ax=ax, marker="o", color="teal")
     ax.set_title("Monthly Trade Volume (FOB Value)")
     ax.set_xlabel("Month")
-    ax.set_ylabel("Total FOB Value")
+    ax.set_ylabel("Total FOB Value (₦)")
+    plt.xticks(rotation=45)
     st.pyplot(fig)
 
 # ===============================
