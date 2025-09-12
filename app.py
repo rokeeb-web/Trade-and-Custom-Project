@@ -4,298 +4,91 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 
-st.set_page_config(page_title="Trade and Customs Dashboard", layout="wide")
+# Load dataset
+df = pd.read_excel("Cleaned_Trade_and_Custom.xlsx")
 
-# ===============================
-# Load Data
-# ===============================
-@st.cache_data
-def load_data():
-    return pd.read_excel("Cleaned_Custom_Import_Dataset.xlsx")
+# Convert Receipt Date to datetime
+df['Receipt Date'] = pd.to_datetime(df['Receipt Date'], errors='coerce')
 
-df = load_data()
+# Set Streamlit page layout
+st.set_page_config(page_title="Trade & Customs Dashboard", layout="wide")
 
-# Ensure common date columns are parsed later (we'll detect which one to use)
+# Title
+st.title("📊 Trade & Customs Dashboard")
+st.markdown("An interactive dashboard to explore trade and customs data.")
 
-# ===============================
-# Sidebar Filters
-# ===============================
-st.sidebar.header("Filters")
+# Sidebar filters
+st.sidebar.header("🔍 Filter Data")
+countries = st.sidebar.multiselect("Select Country of Origin", options=df["Country of Origin"].dropna().unique())
+products = st.sidebar.multiselect("Select Product", options=df["HS Product"].dropna().unique())
 
-metric = st.sidebar.selectbox(
-    "Select Metric", ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
-)
-
-hs_products = st.sidebar.multiselect(
-    "Filter by HS Product", options=df["HS Product"].dropna().unique()
-)
-
-countries_origin = st.sidebar.multiselect(
-    "Filter by Country of Origin", options=df["Country of Origin"].dropna().unique()
-)
-
-countries_supply = st.sidebar.multiselect(
-    "Filter by Country of Supply", options=df["Country of Supply"].dropna().unique()
-)
-
-top_n = st.sidebar.slider("Select Top N", 5, 20, 10)
-
-# ===============================
-# Apply Filters
-# ===============================
 filtered_df = df.copy()
+if countries:
+    filtered_df = filtered_df[filtered_df["Country of Origin"].isin(countries)]
+if products:
+    filtered_df = filtered_df[filtered_df["HS Product"].isin(products)]
 
-if hs_products:
-    filtered_df = filtered_df[filtered_df["HS Product"].isin(hs_products)]
-
-if countries_origin:
-    filtered_df = filtered_df[filtered_df["Country of Origin"].isin(countries_origin)]
-
-if countries_supply:
-    filtered_df = filtered_df[filtered_df["Country of Supply"].isin(countries_supply)]
-
-# ===============================
-# Helper: Format numbers
-# ===============================
-def human_format(x):
-    if x >= 1e9:
-        return f"{x/1e9:.2f}"
-    elif x >= 1e6:
-        return f"{x/1e6:.2f}"
-    else:
-        return f"{x:,.0f}"
-
-# ===============================
-# Streamlit App Layout
-# ===============================
-st.title("Trade and Customs Data Dashboard")
-
-st.markdown(
-    """
-This interactive dashboard presents exploratory data analysis (EDA) on trade and customs data.  
-Use the filters in the sidebar to customize the view.
-"""
-)
-
-# ===============================
-# Key Metrics
-# ===============================
-total_imports = filtered_df["CIF Value (N)"].sum()
-total_fob = filtered_df["FOB Value (N)"].sum()
-total_tax = filtered_df["Total Tax(N)"].sum()
-unique_importers = filtered_df["Importer"].nunique()
-
-st.subheader("Key Metrics")
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total CIF Imports (₦)", f"{human_format(total_imports)}B")
-col2.metric("Total FOB Value (₦)", f"{human_format(total_fob)}B")
-col3.metric("Total Tax Revenue (₦)", f"{human_format(total_tax)}B")
-col4.metric("Unique Importers", unique_importers)
-
-# ===============================
-# Visualization Function
-# ===============================
-def plot_bar(data, x_col, y_col, xlabel, ylabel, palette):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(
-        y=y_col,
-        x=x_col,
-        data=data,
-        ax=ax,
-        orient="h",
-        palette=palette,
-        order=list(data.sort_values(x_col, ascending=False)[y_col]),
-    )
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    plt.tight_layout()
-    st.pyplot(fig)
-
-# ===============================
-# Visualizations
-# ===============================
-
-# 1. Imports by HS Product
-st.subheader(f"Top {top_n} Imports by HS Product ({metric})")
-imports_by_hs = (
-    filtered_df.groupby("HS Product")[metric]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
-)
-imports_by_hs["Scaled"] = imports_by_hs[metric] / 1e9
-plot_bar(
-    imports_by_hs,
-    "Scaled",
-    "HS Product",
-    f"{metric} in Billions (₦)",
-    "HS Product",
-    "Blues_r",
-)
-
-# 2. Top Countries of Supply
-st.subheader(f"Top {top_n} Countries of Supply ({metric})")
-supply_countries = (
-    filtered_df.groupby("Country of Supply")[metric]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
-)
-supply_countries["Scaled"] = supply_countries[metric] / 1e9
-plot_bar(
-    supply_countries,
-    "Scaled",
-    "Country of Supply",
-    f"{metric} in Billions (₦)",
-    "Country of Supply",
-    "Greens_r",
-)
-
-# 3. Top Countries of Origin
-st.subheader(f"Top {top_n} Countries of Origin ({metric})")
-origin_countries = (
-    filtered_df.groupby("Country of Origin")[metric]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
-)
-origin_countries["Scaled"] = origin_countries[metric] / 1e9
-plot_bar(
-    origin_countries,
-    "Scaled",
-    "Country of Origin",
-    f"{metric} in Billions (₦)",
-    "Country of Origin",
-    "Oranges_r",
-)
-
-# 4. Tax Revenue Contributions by HS Product
-st.subheader(f"Top {top_n} Tax Revenue Contributions by HS Product")
-tax_by_hs = (
-    filtered_df.groupby("HS Product")["Total Tax(N)"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
-)
-tax_by_hs["Scaled"] = tax_by_hs["Total Tax(N)"] / 1e9
-plot_bar(
-    tax_by_hs,
-    "Scaled",
-    "HS Product",
-    "Tax Revenue in Billions (₦)",
-    "HS Product",
-    "Purples_r",
-)
-
-# 5. Top Importers by CIF Value
-st.subheader(f"Top {top_n} Importers by CIF Value")
-top_importers = (
-    filtered_df.groupby("Importer")["CIF Value (N)"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(top_n)
-    .reset_index()
-)
-top_importers["Scaled"] = top_importers["CIF Value (N)"] / 1e9
-plot_bar(
-    top_importers,
-    "Scaled",
-    "Importer",
-    "CIF Value in Billions (₦)",
-    "Importer",
-    "Reds_r",
-)
-
-# 6. Correlation Heatmap
-st.subheader("Correlation between Trade Variables")
-numeric_cols = ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
-corr_matrix = filtered_df[numeric_cols].corr()
-fig, ax = plt.subplots(figsize=(8, 6))
-sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
-ax.set_title("Correlation Heatmap of Trade Variables")
-st.pyplot(fig)
-
-# ===============================
-# 7. Monthly Trade Volume (Line Chart using Receipt Date)
-# ===============================
-st.subheader("Monthly Trade Volume (monthly aggregation)")
-
-# try to detect date-like column (priority: Receipt Date)
-date_candidates = ["Receipt Date", "Receipt_Date", "Date", "date", "receipt_date"]
-date_col = next((c for c in date_candidates if c in filtered_df.columns), None)
-
-if date_col is None:
-    st.info("No date column (e.g., 'Receipt Date') found in dataset — monthly trend can't be shown.")
-else:
-    # convert to datetime (in-place on a copy to avoid side-effects)
-    filtered_df[date_col] = pd.to_datetime(filtered_df[date_col], errors="coerce")
-
-    # drop rows without a valid date or metric
-    trend_df = filtered_df.dropna(subset=[date_col, metric]).copy()
-
-    if trend_df.empty:
-        st.info("No valid rows with both date and metric values to plot.")
-    else:
-        # aggregate monthly using .dt.to_period('M')
-        monthly_volume = (
-            trend_df.groupby(trend_df[date_col].dt.to_period("M"))[metric]
-            .sum()
-            .reset_index()
-        )
-        # convert period to timestamp for plotting
-        monthly_volume[date_col] = monthly_volume[date_col].dt.to_timestamp()
-        monthly_volume[metric + "_Billions"] = monthly_volume[metric] / 1e9
-
-        # Plot interactive Plotly line
-        fig_trend = px.line(
-            monthly_volume,
-            x=date_col,
-            y=metric + "_Billions",
-            markers=True,
-            title=f"Monthly {metric} (aggregated)",
-            labels={metric + "_Billions": f"{metric} (₦ Billions)", date_col: "Month"},
-        )
-        fig_trend.update_layout(xaxis_tickformat="%b %Y", hovermode="x unified")
-        st.plotly_chart(fig_trend, use_container_width=True)
-
-# ===============================
-# Data Download
-# ===============================
-st.subheader("Download Filtered Data")
-csv = filtered_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    "Download CSV",
-    data=csv,
-    file_name="filtered_trade_data.csv",
-    mime="text/csv",
-)
-
-# ===============================
-# Insights
-# ===============================
-st.subheader("Key Insights")
-
-if not imports_by_hs.empty:
-    top_hs = imports_by_hs.iloc[0]
-    st.write(
-        f"The top HS Product is **{top_hs['HS Product']}** with a value of **{top_hs['Scaled']:.2f}B ₦**."
-    )
-
-if not origin_countries.empty:
-    top_country = origin_countries.iloc[0]
-    st.write(
-        f"The top country of origin is **{top_country['Country of Origin']}** with imports worth **{top_country['Scaled']:.2f}B ₦**."
-    )
-
-if not supply_countries.empty:
-    top_supply = supply_countries.iloc[0]
-    st.write(
-        f"The top country of supply is **{top_supply['Country of Supply']}** contributing **{top_supply['Scaled']:.2f}B ₦**."
-    )
+# ============================
+# Top Stats
+# ============================
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("🌍 Unique Countries", filtered_df["Country of Origin"].nunique())
+with col2:
+    st.metric("📦 Unique Products", filtered_df["HS Product"].nunique())
+with col3:
+    st.metric("💰 Total FOB Value (N)", f"{filtered_df['FOB Value (N)'].sum():,.0f}")
 
 st.markdown("---")
-st.markdown("Use filters on the left to refine the analysis and download the customized dataset.")
+
+# ============================
+# 1. Vertical Bar Chart – Top Countries
+# ============================
+st.subheader("🌍 Top 10 Trading Countries by FOB Value")
+top_countries = filtered_df.groupby("Country of Origin")["FOB Value (N)"].sum().nlargest(10).reset_index()
+fig_countries = px.bar(top_countries, x="Country of Origin", y="FOB Value (N)",
+                       text="FOB Value (N)", color="FOB Value (N)",
+                       color_continuous_scale="Blues", height=500)
+fig_countries.update_traces(texttemplate='%{text:,.0f}', textposition="outside")
+st.plotly_chart(fig_countries, use_container_width=True)
+
+# ============================
+# 2. Vertical Bar Chart – Top Products
+# ============================
+st.subheader("📦 Top 10 Products by CIF Value")
+top_products = filtered_df.groupby("HS Product")["CIF Value (N)"].sum().nlargest(10).reset_index()
+fig_products = px.bar(top_products, x="HS Product", y="CIF Value (N)",
+                      text="CIF Value (N)", color="CIF Value (N)",
+                      color_continuous_scale="Greens", height=500)
+fig_products.update_traces(texttemplate='%{text:,.0f}', textposition="outside")
+st.plotly_chart(fig_products, use_container_width=True)
+
+# ============================
+# 3. Correlation Heatmap
+# ============================
+st.subheader("📈 Correlation between Trade Variables")
+numeric_cols = ['CIF Value (N)', 'Total Tax(N)', 'FOB Value (N)']
+corr_matrix = filtered_df[numeric_cols].corr()
+
+fig, ax = plt.subplots(figsize=(6, 4))
+sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+st.pyplot(fig)
+
+# ============================
+# 4. Monthly Trade Volume (Line Chart)
+# ============================
+st.subheader("📅 Monthly Trade Volume (FOB Value)")
+monthly_volume = filtered_df.groupby(filtered_df['Receipt Date'].dt.to_period('M'))['FOB Value (N)'].sum().reset_index()
+monthly_volume['Receipt Date'] = monthly_volume['Receipt Date'].astype(str)
+
+fig_line = px.line(monthly_volume, x="Receipt Date", y="FOB Value (N)",
+                   markers=True, line_shape="spline", height=400)
+fig_line.update_traces(line=dict(width=3, color="royalblue"), marker=dict(size=8, color="orange"))
+fig_line.update_layout(
+    xaxis_title="Month",
+    yaxis_title="Total FOB Value (N)",
+    plot_bgcolor="white",
+    font=dict(size=14),
+    margin=dict(l=40, r=40, t=40, b=40)
+)
+st.plotly_chart(fig_line, use_container_width=True)
