@@ -246,26 +246,29 @@ if df is not None:
         file_name="filtered_trade_data.csv",
         mime="text/csv",
     )
+# ===============================
+# Insights
+# ===============================
+st.subheader("Key Insights")
 
-    # ===============================
-    # Insights
-    # ===============================
-    st.subheader("Key Insights")
-    if not imports_by_hs.empty:
-        top_hs = imports_by_hs.iloc[0]
-        st.write(
-            f"The top HS Product is **{top_hs['HS Product']}** with a value of **{top_hs['Scaled']:.2f}B ₦**."
-        )
-    if not origin_countries.empty:
-        top_country = origin_countries.iloc[0]
-        st.write(
-            f"The top country of origin is **{top_country['Country of Origin']}** with imports worth **{top_country['Scaled']:.2f}B ₦**."
-        )
-    if not supply_countries.empty:
-        top_supply = supply_countries.iloc[0]
-        st.write(
-            f"The top country of supply is **{top_supply['Country of Supply']}** contributing **{top_supply['Scaled']:.2f}B ₦**."
-        )
+if not imports_by_hs.empty:
+    top_hs = imports_by_hs.iloc[0]
+    st.write(
+        f"The top HS Product is **{top_hs['HS Product']}** with a value of **₦{top_hs['Scaled']:.2f}B**."
+    )
 
-    st.markdown("---")
-    st.markdown("Use filters on the left to refine the analysis and download the customized dataset.")
+if not origin_countries.empty:
+    top_country = origin_countries.iloc[0]
+    st.write(
+        f"The top country of origin is **{top_country['Country of Origin']}** with imports worth **₦{top_country['Scaled']:.2f}B**."
+    )
+
+if not supply_countries.empty:
+    top_supply = supply_countries.iloc[0]
+    st.write(
+        f"The top country of supply is **{top_supply['Country of Supply']}** contributing **₦{top_supply['Scaled']:.2f}B**."
+    )
+
+st.markdown("---")
+st.markdown("Use filters on the left to refine the analysis and download the customized dataset.")
+
