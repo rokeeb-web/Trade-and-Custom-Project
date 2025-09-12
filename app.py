@@ -151,35 +151,39 @@ top_importers = (
 top_importers["Scaled"] = top_importers["CIF Value (N)"] / 1e9
 plot_bar(top_importers, "Scaled", "Importer", "CIF Value in Billions (₦)", "Importer", "Reds_r")
 
-# ===============================
-# Correlation Heatmap
-# ===============================
+# 6. Correlation Heatmap
 st.subheader("Correlation between Trade Variables")
-numeric_cols = ['CIF Value (N)', 'FOB Value (N)', 'Total Tax(N)']
+numeric_cols = ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
 corr_matrix = filtered_df[numeric_cols].corr()
 
-fig, ax = plt.subplots(figsize=(8, 6))
+fig, ax = plt.subplots(figsize=(8,6))
 sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
-plt.title("Correlation between Trade Variables")
+ax.set_title("Correlation Heatmap of Trade Variables")
 st.pyplot(fig)
 
-# ===============================
-# Choropleth Map
-# ===============================
-st.subheader(f"World Map of Trade by Country of Origin ({metric})")
-map_data = filtered_df.groupby("Country of Origin")[metric].sum().reset_index()
+# 7. Choropleth Map
+st.subheader(f"Trade Imports by Country of Origin ({metric})")
 
-fig_map = px.choropleth(
-    map_data,
+trade_map = filtered_df.groupby("Country of Origin")[metric].sum().reset_index()
+trade_map[metric + "_Billions"] = trade_map[metric] / 1e9
+
+fig = px.choropleth(
+    trade_map,
     locations="Country of Origin",
     locationmode="country names",
-    color=metric,
+    color=metric + "_Billions",
     hover_name="Country of Origin",
-    color_continuous_scale="Blues",
-    title=f"Trade by Country of Origin ({metric})",
+    color_continuous_scale="YlGnBu",
+    title=f"Trade Imports by Country of Origin ({metric} in Billions ₦)",
+    projection="natural earth"
 )
-fig_map.update_layout(geo=dict(showframe=False, showcoastlines=True))
-st.plotly_chart(fig_map, use_container_width=True)
+
+fig.update_layout(
+    geo=dict(showframe=False, showcoastlines=True),
+    coloraxis_colorbar=dict(title=f"{metric} (₦ Billions)")
+)
+
+st.plotly_chart(fig, use_container_width=True)
 
 # ===============================
 # Data Download
