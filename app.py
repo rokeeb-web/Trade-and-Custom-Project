@@ -151,6 +151,30 @@ top_importers["Scaled"] = top_importers["CIF Value (N)"] / 1e9
 plot_bar(top_importers, "Scaled", "Importer", "CIF Value in Billions (₦)", "Importer", "Reds_r")
 
 # ===============================
+# Correlation Heatmap
+# ===============================
+st.subheader("Correlation between Trade Variables")
+numeric_cols = ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
+corr_matrix = filtered_df[numeric_cols].corr()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
+ax.set_title("Correlation Heatmap of Trade Variables")
+st.pyplot(fig)
+
+# ===============================
+# Map Visualization
+# ===============================
+st.subheader("Trade Map Visualization")
+
+# Example: show trade by country of origin if lat/long exist
+# Assumes you have "Latitude" and "Longitude" columns for each country
+if {"Latitude", "Longitude"}.issubset(filtered_df.columns):
+    st.map(filtered_df[["Latitude", "Longitude"]])
+else:
+    st.info("Map cannot be displayed because Latitude/Longitude columns are missing in the dataset.")
+
+# ===============================
 # Data Download
 # ===============================
 st.subheader("Download Filtered Data")
