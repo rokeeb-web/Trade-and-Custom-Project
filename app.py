@@ -26,7 +26,7 @@ metric = st.sidebar.selectbox(
 
 hs_products = st.sidebar.multiselect(
     "Filter by HS Product",
-    options=df["HS_Product"].dropna().unique()
+    options=df["HS Product"].dropna().unique()
 )
 
 countries_origin = st.sidebar.multiselect(
@@ -47,7 +47,7 @@ top_n = st.sidebar.slider("Select Top N", 5, 20, 10)
 filtered_df = df.copy()
 
 if hs_products:
-    filtered_df = filtered_df[filtered_df["HS_Product"].isin(hs_products)]
+    filtered_df = filtered_df[filtered_df["HS Product"].isin(hs_products)]
 
 if countries_origin:
     filtered_df = filtered_df[filtered_df["Country of Origin"].isin(countries_origin)]
@@ -113,10 +113,10 @@ def plot_bar(data, x_col, y_col, xlabel, ylabel, palette):
 # 1. Imports by HS Product
 st.subheader(f"Top {top_n} Imports by HS Product ({metric})")
 imports_by_hs = (
-    filtered_df.groupby("HS_Product")[metric].sum().sort_values(ascending=False).head(top_n).reset_index()
+    filtered_df.groupby("HS Product")[metric].sum().sort_values(ascending=False).head(top_n).reset_index()
 )
 imports_by_hs["Scaled"] = imports_by_hs[metric] / 1e9
-plot_bar(imports_by_hs, "Scaled", "HS_Product", f"{metric} in Billions (₦)", "HS Product", "Blues_r")
+plot_bar(imports_by_hs, "Scaled", "HS Product", f"{metric} in Billions (₦)", "HS Product", "Blues_r")
 
 # 2. Top Countries of Supply
 st.subheader(f"Top {top_n} Countries of Supply ({metric})")
@@ -137,10 +137,10 @@ plot_bar(origin_countries, "Scaled", "Country of Origin", f"{metric} in Billions
 # 4. Tax Revenue Contributions by HS Product
 st.subheader(f"Top {top_n} Tax Revenue Contributions by HS Product")
 tax_by_hs = (
-    filtered_df.groupby("HS_Product")["Total Tax(N)"].sum().sort_values(ascending=False).head(top_n).reset_index()
+    filtered_df.groupby("HS Product")["Total Tax(N)"].sum().sort_values(ascending=False).head(top_n).reset_index()
 )
 tax_by_hs["Scaled"] = tax_by_hs["Total Tax(N)"] / 1e9
-plot_bar(tax_by_hs, "Scaled", "HS_Product", "Tax Revenue in Billions (₦)", "HS Product", "Purples_r")
+plot_bar(tax_by_hs, "Scaled", "HS Product", "Tax Revenue in Billions (₦)", "HS Product", "Purples_r")
 
 # 5. Top Importers by CIF Value
 st.subheader(f"Top {top_n} Importers by CIF Value")
@@ -163,7 +163,7 @@ st.download_button("Download CSV", data=csv, file_name="filtered_trade_data.csv"
 st.subheader("Key Insights")
 if not imports_by_hs.empty:
     top_hs = imports_by_hs.iloc[0]
-    st.write(f"The top HS Product is **{top_hs['HS_Product']}** with a value of **{top_hs['Scaled']:.2f}B ₦**.")
+    st.write(f"The top HS Product is **{top_hs['HS Product']}** with a value of **{top_hs['Scaled']:.2f}B ₦**.")
 if not origin_countries.empty:
     top_country = origin_countries.iloc[0]
     st.write(f"The top country of origin is **{top_country['Country of Origin']}** with imports worth **{top_country['Scaled']:.2f}B ₦**.")
