@@ -10,7 +10,7 @@ st.set_page_config(page_title="Trade and Customs Dashboard", layout="wide")
 # ===============================
 @st.cache_data
 def load_data():
-    return pd.read_excel("Cleaned_Trade_and_Custom.xlsx")
+    return pd.read_excel("Cleaned_Custom_Import_Dataset.xlsx")
 
 df = load_data()
 
@@ -24,19 +24,19 @@ metric = st.sidebar.selectbox(
     ["CIF Value (N)", "FOB Value (N)", "Total Tax(N)"]
 )
 
-hs_codes = st.sidebar.multiselect(
-    "Filter by HS Code",
-    options=df["HS Code"].unique()
+hs_products = st.sidebar.multiselect(
+    "Filter by HS Product",
+    options=df["HS_Product"].dropna().unique()
 )
 
 countries_origin = st.sidebar.multiselect(
     "Filter by Country of Origin",
-    options=df["Country of Origin"].unique()
+    options=df["Country of Origin"].dropna().unique()
 )
 
 countries_supply = st.sidebar.multiselect(
     "Filter by Country of Supply",
-    options=df["Country of Supply"].unique()
+    options=df["Country of Supply"].dropna().unique()
 )
 
 top_n = st.sidebar.slider("Select Top N", 5, 20, 10)
@@ -46,8 +46,8 @@ top_n = st.sidebar.slider("Select Top N", 5, 20, 10)
 # ===============================
 filtered_df = df.copy()
 
-if hs_codes:
-    filtered_df = filtered_df[filtered_df["HS Code"].isin(hs_codes)]
+if hs_products:
+    filtered_df = filtered_df[filtered_df["HS_Product"].isin(hs_products)]
 
 if countries_origin:
     filtered_df = filtered_df[filtered_df["Country of Origin"].isin(countries_origin)]
@@ -110,13 +110,13 @@ def plot_bar(data, x_col, y_col, xlabel, ylabel, palette):
 # Visualizations
 # ===============================
 
-# 1. Imports by HS Code
-st.subheader(f"Top {top_n} Imports by HS Code ({metric})")
+# 1. Imports by HS Product
+st.subheader(f"Top {top_n} Imports by HS Product ({metric})")
 imports_by_hs = (
-    filtered_df.groupby("HS Code")[metric].sum().sort_values(ascending=False).head(top_n).reset_index()
+    filtered_df.groupby("HS_Product")[metric].sum().sort_values(ascending=False).head(top_n).reset_index()
 )
 imports_by_hs["Scaled"] = imports_by_hs[metric] / 1e9
-plot_bar(imports_by_hs, "Scaled", "HS Code", f"{metric} in Billions (₦)", "HS Code", "Blues_r")
+plot_bar(imports_by_hs, "Scaled", "HS_Product", f"{metric} in Billions (₦)", "HS Product", "Blues_r")
 
 # 2. Top Countries of Supply
 st.subheader(f"Top {top_n} Countries of Supply ({metric})")
@@ -134,13 +134,13 @@ origin_countries = (
 origin_countries["Scaled"] = origin_countries[metric] / 1e9
 plot_bar(origin_countries, "Scaled", "Country of Origin", f"{metric} in Billions (₦)", "Country of Origin", "Oranges_r")
 
-# 4. Tax Revenue Contributions by HS Code
-st.subheader(f"Top {top_n} Tax Revenue Contributions by HS Code")
+# 4. Tax Revenue Contributions by HS Product
+st.subheader(f"Top {top_n} Tax Revenue Contributions by HS Product")
 tax_by_hs = (
-    filtered_df.groupby("HS Code")["Total Tax(N)"].sum().sort_values(ascending=False).head(top_n).reset_index()
+    filtered_df.groupby("HS_Product")["Total Tax(N)"].sum().sort_values(ascending=False).head(top_n).reset_index()
 )
 tax_by_hs["Scaled"] = tax_by_hs["Total Tax(N)"] / 1e9
-plot_bar(tax_by_hs, "Scaled", "HS Code", "Tax Revenue in Billions (₦)", "HS Code", "Purples_r")
+plot_bar(tax_by_hs, "Scaled", "HS_Product", "Tax Revenue in Billions (₦)", "HS Product", "Purples_r")
 
 # 5. Top Importers by CIF Value
 st.subheader(f"Top {top_n} Importers by CIF Value")
@@ -163,7 +163,7 @@ st.download_button("Download CSV", data=csv, file_name="filtered_trade_data.csv"
 st.subheader("Key Insights")
 if not imports_by_hs.empty:
     top_hs = imports_by_hs.iloc[0]
-    st.write(f"The top HS Code is **{top_hs['HS Code']}** with a value of **{top_hs['Scaled']:.2f}B ₦**.")
+    st.write(f"The top HS Product is **{top_hs['HS_Product']}** with a value of **{top_hs['Scaled']:.2f}B ₦**.")
 if not origin_countries.empty:
     top_country = origin_countries.iloc[0]
     st.write(f"The top country of origin is **{top_country['Country of Origin']}** with imports worth **{top_country['Scaled']:.2f}B ₦**.")
