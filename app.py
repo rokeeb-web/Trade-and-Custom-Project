@@ -15,6 +15,8 @@ def load_data():
 
 df = load_data()
 
+# Ensure common date columns are parsed later (we'll detect which one to use)
+
 # ===============================
 # Sidebar Filters
 # ===============================
@@ -102,7 +104,7 @@ def plot_bar(data, x_col, y_col, xlabel, ylabel, palette):
         ax=ax,
         orient="h",
         palette=palette,
-        order=data.sort_values(x_col, ascending=False)[y_col],
+        order=list(data.sort_values(x_col, ascending=False)[y_col]),
     )
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -217,27 +219,48 @@ sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
 ax.set_title("Correlation Heatmap of Trade Variables")
 st.pyplot(fig)
 
-# 7. Trend Over Time (Line Chart)
-st.subheader(f"Trend of {metric} Over Time")
-if "Date" in filtered_df.columns:
-    trend_data = (
-        filtered_df.groupby("Date")[metric]
-        .sum()
-        .reset_index()
-        .sort_values("Date")
-    )
-    trend_data["Scaled"] = trend_data[metric] / 1e9
-    fig = px.line(
-        trend_data,
-        x="Date",
-        y="Scaled",
-        title=f"Trend of {metric} Over Time",
-        labels={"Scaled": f"{metric} (₦ Billions)", "Date": "Date"},
-        markers=True,
-    )
-    st.plotly_chart(fig, use_container_width=True)
+# ===============================
+# 7. Monthly Trade Volume (Line Chart using Receipt Date)
+# ===============================
+st.subheader("Monthly Trade Volume (monthly aggregation)")
+
+# try to detect date-like column (priority: Receipt Date)
+date_candidates = ["Receipt Date", "Receipt_Date", "Date", "date", "receipt_date"]
+date_col = next((c for c in date_candidates if c in filtered_df.columns), None)
+
+if date_col is None:
+    st.info("No date column (e.g., 'Receipt Date') found in dataset — monthly trend can't be shown.")
 else:
-    st.info("No 'Date' column available in dataset for time series trend.")
+    # convert to datetime (in-place on a copy to avoid side-effects)
+    filtered_df[date_col] = pd.to_datetime(filtered_df[date_col], errors="coerce")
+
+    # drop rows without a valid date or metric
+    trend_df = filtered_df.dropna(subset=[date_col, metric]).copy()
+
+    if trend_df.empty:
+        st.info("No valid rows with both date and metric values to plot.")
+    else:
+        # aggregate monthly using .dt.to_period('M')
+        monthly_volume = (
+            trend_df.groupby(trend_df[date_col].dt.to_period("M"))[metric]
+            .sum()
+            .reset_index()
+        )
+        # convert period to timestamp for plotting
+        monthly_volume[date_col] = monthly_volume[date_col].dt.to_timestamp()
+        monthly_volume[metric + "_Billions"] = monthly_volume[metric] / 1e9
+
+        # Plot interactive Plotly line
+        fig_trend = px.line(
+            monthly_volume,
+            x=date_col,
+            y=metric + "_Billions",
+            markers=True,
+            title=f"Monthly {metric} (aggregated)",
+            labels={metric + "_Billions": f"{metric} (₦ Billions)", date_col: "Month"},
+        )
+        fig_trend.update_layout(xaxis_tickformat="%b %Y", hovermode="x unified")
+        st.plotly_chart(fig_trend, use_container_width=True)
 
 # ===============================
 # Data Download
