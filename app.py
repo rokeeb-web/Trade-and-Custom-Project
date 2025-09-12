@@ -15,6 +15,10 @@ def load_data():
 
 df = load_data()
 
+# Ensure date column is datetime
+if "Receipt Date" in df.columns:
+    df["Receipt Date"] = pd.to_datetime(df["Receipt Date"], errors="coerce")
+
 # ===============================
 # Sidebar Filters
 # ===============================
@@ -99,8 +103,8 @@ col4.metric("Unique Importers", unique_importers)
 def plot_bar(data, x_col, y_col, xlabel, ylabel, palette):
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.barplot(
-        y=y_col, x=x_col, data=data, ax=ax, orient="h", palette=palette,
-        order=data.sort_values(x_col, ascending=False)[y_col]
+        x=x_col, y=y_col, data=data, ax=ax, palette=palette,
+        order=data.sort_values(x_col, ascending=False)[x_col]
     )
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -184,6 +188,19 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# 8. Monthly Trade Volume
+if "Receipt Date" in filtered_df.columns:
+    st.subheader("Monthly Trade Volume (FOB Value)")
+    monthly_volume = filtered_df.groupby(filtered_df["Receipt Date"].dt.to_period("M"))["FOB Value (N)"].sum()
+    monthly_volume.index = monthly_volume.index.to_timestamp()
+
+    fig, ax = plt.subplots(figsize=(12,6))
+    monthly_volume.plot(ax=ax, marker="o")
+    ax.set_title("Monthly Trade Volume (FOB Value)")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Total FOB Value")
+    st.pyplot(fig)
 
 # ===============================
 # Data Download
